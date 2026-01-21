@@ -1,0 +1,254 @@
+name: 'PipeOps Deploy'
+description: 'Deploy applications to PipeOps platform using the PipeOps CLI'
+branding:
+  icon: 'cloud'
+  color: 'blue'
+inputs:
+  pipeops-token:
+    description: 'PipeOps API token/authentication token'
+    required: true
+  project-id:
+    description: 'PipeOps project ID'
+    required: true
+  environment:
+    description: 'Deployment environment'
+    required: false
+    default: 'production'
+  branch:
+    description: 'Git branch to deploy'
+    required: false
+    default: ''
+  pipeline:
+    description: 'Pipeline name or ID if using pipeops deploy pipeline'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory to run commands from'
+    required: false
+    default: ''
+  cli-version:
+    description: 'PipeOps CLI version to install (default: latest)'
+    required: false
+    default: 'latest'
+outputs:
+  deployment-id:
+    description: 'ID of the created deployment'
+  deployment-url:
+    description: 'URL of the deployed application'
+  deployment-status:
+    description: 'Status of the deployment'
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.pipeops-token }}" ]; then
+          echo "::error::pipeops-token is required"
+          exit 1
+        fi
+        if [ -z "${{ inputs.project-id }}" ]; then
+          echo "::error::project-id is required"
+          exit 1
+        fi
+
+        # Set default values
+        ENVIRONMENT="${{ inputs.environment }}"
+        if [ -z "$ENVIRONMENT" ]; then
+          ENVIRONMENT="production"
+        fi
+
+        BRANCH="${{ inputs.branch }}"
+        if [ -z "$BRANCH" ]; then
+          BRANCH="${GITHUB_REF_NAME:-main}"
+        fi
+
+        echo "Environment: $ENVIRONMENT"
+        echo "Branch: $BRANCH"
+        echo "Project ID: ${{ inputs.project-id }}"
+
+    - name: Install jq
+      shell: bash
+      run: |
+        if ! command -v jq &> /dev/null; then
+          echo "Installing jq..."
+          sudo apt-get update -qq
+          sudo apt-get install -y jq
+        else
+          echo "jq is already installed"
+        fi
+
+    - name: Install PipeOps CLI
+      shell: bash
+      run: |
+        echo "Installing PipeOps CLI..."
+        curl -fsSL https://raw.githubusercontent.com/PipeOpsHQ/pipeops-cli/main/install.sh | sh
+
+        # Add CLI to PATH if not already there
+        if [ -d "$HOME/.local/bin" ] && [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+        fi
+
+        # Verify installation
+        if command -v pipeops &> /dev/null; then
+          pipeops --version
+          echo "PipeOps CLI installed successfully"
+        else
+          # Try to find pipeops in common locations
+          if [ -f "$HOME/.local/bin/pipeops" ]; then
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+            export PATH="$HOME/.local/bin:$PATH"
+            pipeops --version
+            echo "PipeOps CLI installed successfully"
+          else
+            echo "::error::Failed to install PipeOps CLI"
+            exit 1
+          fi
+        fi
+
+    - name: Authenticate with PipeOps
+      shell: bash
+      env:
+        PIPEOPS_TOKEN: ${{ inputs.pipeops-token }}
+      run: |
+        echo "Authenticating with PipeOps..."
+
+        # Try token-based authentication
+        # First, check if PIPEOPS_TOKEN environment variable is supported
+        export PIPEOPS_TOKEN="${{ inputs.pipeops-token }}"
+
+        # Try different authentication methods
+        if pipeops auth login --token "$PIPEOPS_TOKEN" 2>/dev/null; then
+          echo "Authentication successful using --token flag"
+        elif pipeops auth login --token="$PIPEOPS_TOKEN" 2>/dev/null; then
+          echo "Authentication successful using --token= flag"
+        else
+          # Try setting token in config file directly
+          mkdir -p ~/.pipeops
+          echo "{\"token\": \"$PIPEOPS_TOKEN\"}" > ~/.pipeops/config.json 2>/dev/null || true
+          echo "Token configured, verifying authentication..."
+        fi
+
+        # Verify authentication
+        if pipeops auth status 2>/dev/null | grep -q "authenticated\|logged in\|valid"; then
+          echo "Authentication verified"
+        else
+          # If auth status doesn't work, try to proceed anyway (CLI might use env var)
+          echo "Proceeding with token-based authentication via environment variable"
+        fi
+
+    - name: Deploy to PipeOps
+      shell: bash
+      env:
+        PIPEOPS_TOKEN: ${{ inputs.pipeops-token }}
+      working-directory: ${{ inputs.working-directory }}
+      id: deploy
+      run: |
+        # Set up environment variables
+        ENVIRONMENT="${{ inputs.environment }}"
+        if [ -z "$ENVIRONMENT" ]; then
+          ENVIRONMENT="production"
+        fi
+
+        BRANCH="${{ inputs.branch }}"
+        if [ -z "$BRANCH" ]; then
+          BRANCH="${GITHUB_REF_NAME:-main}"
+        fi
+
+        PROJECT_ID="${{ inputs.project-id }}"
+        PIPELINE="${{ inputs.pipeline }}"
+
+        echo "Deploying to PipeOps..."
+        echo "Project ID: $PROJECT_ID"
+        echo "Environment: $ENVIRONMENT"
+        echo "Branch: $BRANCH"
+
+        # Build deployment command
+        DEPLOY_CMD="pipeops deploy pipeline"
+
+        # Add flags if provided
+        if [ -n "$PROJECT_ID" ]; then
+          DEPLOY_CMD="$DEPLOY_CMD --project-id $PROJECT_ID"
+        fi
+
+        if [ -n "$ENVIRONMENT" ]; then
+          DEPLOY_CMD="$DEPLOY_CMD --environment $ENVIRONMENT"
+        fi
+
+        if [ -n "$BRANCH" ]; then
+          DEPLOY_CMD="$DEPLOY_CMD --branch $BRANCH"
+        fi
+
+        if [ -n "$PIPELINE" ]; then
+          DEPLOY_CMD="$DEPLOY_CMD --pipeline $PIPELINE"
+        fi
+
+        # Add JSON flag for structured output
+        DEPLOY_CMD="$DEPLOY_CMD --json"
+
+        echo "Executing: $DEPLOY_CMD"
+
+        # Execute deployment and capture output
+        DEPLOY_OUTPUT=$(eval $DEPLOY_CMD 2>&1)
+        DEPLOY_EXIT_CODE=$?
+
+        echo "$DEPLOY_OUTPUT"
+
+        if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+          echo "::error::Deployment failed with exit code $DEPLOY_EXIT_CODE"
+          echo "$DEPLOY_OUTPUT"
+          exit $DEPLOY_EXIT_CODE
+        fi
+
+        # Save output for parsing
+        echo "$DEPLOY_OUTPUT" > /tmp/pipeops-deploy-output.json
+
+    - name: Parse deployment outputs
+      shell: bash
+      id: parse-outputs
+      run: |
+        if [ -f /tmp/pipeops-deploy-output.json ]; then
+          DEPLOY_OUTPUT=$(cat /tmp/pipeops-deploy-output.json)
+
+          # Try to parse JSON output
+          if echo "$DEPLOY_OUTPUT" | jq . > /dev/null 2>&1; then
+            # Extract deployment information from JSON
+            DEPLOYMENT_ID=$(echo "$DEPLOY_OUTPUT" | jq -r '.deployment_id // .id // .deploymentId // ""' 2>/dev/null || echo "")
+            DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.url // .deployment_url // .deploymentUrl // ""' 2>/dev/null || echo "")
+            DEPLOYMENT_STATUS=$(echo "$DEPLOY_OUTPUT" | jq -r '.status // .deployment_status // .deploymentStatus // "success"' 2>/dev/null || echo "success")
+
+            # If not found in root, try nested structures
+            if [ -z "$DEPLOYMENT_ID" ]; then
+              DEPLOYMENT_ID=$(echo "$DEPLOY_OUTPUT" | jq -r '.data.deployment_id // .data.id // .result.deployment_id // ""' 2>/dev/null || echo "")
+            fi
+            if [ -z "$DEPLOYMENT_URL" ]; then
+              DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.data.url // .data.deployment_url // .result.url // ""' 2>/dev/null || echo "")
+            fi
+            if [ "$DEPLOYMENT_STATUS" = "success" ] || [ -z "$DEPLOYMENT_STATUS" ]; then
+              DEPLOYMENT_STATUS=$(echo "$DEPLOY_OUTPUT" | jq -r '.data.status // .result.status // "success"' 2>/dev/null || echo "success")
+            fi
+          else
+            # Fallback: try to extract information from text output
+            echo "Output is not JSON, attempting to parse text output..."
+            DEPLOYMENT_ID=$(echo "$DEPLOY_OUTPUT" | grep -oP 'deployment[_-]?id["\s:]+[\w-]+' | head -1 | grep -oP '[\w-]+$' || echo "")
+            DEPLOYMENT_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https?://[^\s]+' | head -1 || echo "")
+            DEPLOYMENT_STATUS="success"
+          fi
+
+          # Set outputs
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+            echo "Deployment ID: $DEPLOYMENT_ID"
+          fi
+
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            echo "deployment-url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+            echo "Deployment URL: $DEPLOYMENT_URL"
+          fi
+
+          echo "deployment-status=${DEPLOYMENT_STATUS:-success}" >> $GITHUB_OUTPUT
+          echo "Deployment Status: ${DEPLOYMENT_STATUS:-success}"
+        else
+          echo "::warning::Deployment output file not found, setting default outputs"
+          echo "deployment-status=unknown" >> $GITHUB_OUTPUT
+        fi

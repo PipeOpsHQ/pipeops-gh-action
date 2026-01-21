@@ -1,0 +1,74 @@
+name: Test PipeOps Deploy Action
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to PipeOps
+        id: deploy
+        uses: ./
+        with:
+          pipeops-token: ${{ secrets.PIPEOPS_TOKEN }}
+          project-id: ${{ secrets.PIPEOPS_PROJECT_ID }}
+          environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+          branch: ${{ github.ref_name }}
+
+      - name: Display deployment outputs
+        run: |
+          echo "=== Deployment Results ==="
+          echo "Deployment ID: ${{ steps.deploy.outputs.deployment-id }}"
+          echo "Deployment URL: ${{ steps.deploy.outputs.deployment-url }}"
+          echo "Deployment Status: ${{ steps.deploy.outputs.deployment-status }}"
+          echo "========================"
+
+      - name: Deployment success check
+        if: steps.deploy.outputs.deployment-status != 'success'
+        run: |
+          echo "::warning::Deployment status is not 'success'"
+          exit 1
+
+  multi-environment-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        environment: [staging, production]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to ${{ matrix.environment }}
+        id: deploy-${{ matrix.environment }}
+        uses: ./
+        with:
+          pipeops-token: ${{ secrets.PIPEOPS_TOKEN }}
+          project-id: ${{ secrets.PIPEOPS_PROJECT_ID }}
+          environment: ${{ matrix.environment }}
+          branch: ${{ github.ref_name }}
+
+      - name: Display ${{ matrix.environment }} deployment
+        run: |
+          echo "=== ${{ matrix.environment }} Deployment ==="
+          echo "Deployment ID: ${{ steps.deploy-${{ matrix.environment }}.outputs.deployment-id }}"
+          echo "Deployment URL: ${{ steps.deploy-${{ matrix.environment }}.outputs.deployment-url }}"
+          echo "================================"
