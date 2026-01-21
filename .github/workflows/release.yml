@@ -56,48 +56,51 @@ jobs:
 
           if [ -z "$PREVIOUS_TAG" ]; then
             echo "This appears to be the first release"
-            CHANGELOG="## Release $VERSION
-
-First release of the PipeOps Deploy GitHub Action.
-
-### Features
-- Deploy applications to PipeOps platform
-- Support for multiple environments
-- Token-based authentication
-- JSON output parsing
-- Comprehensive error handling
-
-### Usage
-\`\`\`yaml
-- uses: PipeOpsHQ/pipeops-action@$MAJOR_VERSION
-  with:
-    pipeops-token: \${{ secrets.PIPEOPS_TOKEN }}
-    project-id: 'your-project-id'
-\`\`\`"
+            {
+              echo "## Release $VERSION"
+              echo ""
+              echo "First release of the PipeOps Deploy GitHub Action."
+              echo ""
+              echo "### Features"
+              echo "- Deploy applications to PipeOps platform"
+              echo "- Support for multiple environments"
+              echo "- Token-based authentication"
+              echo "- JSON output parsing"
+              echo "- Comprehensive error handling"
+              echo ""
+              echo "### Usage"
+              echo '```yaml'
+              echo "- uses: PipeOpsHQ/pipeops-action@$MAJOR_VERSION"
+              echo "  with:"
+              echo "    pipeops-token: \${{ secrets.PIPEOPS_TOKEN }}"
+              echo "    project-id: 'your-project-id'"
+              echo '```'
+            } > RELEASE_NOTES.md
           else
             echo "Previous tag: $PREVIOUS_TAG"
             # Generate changelog from git commits
-            CHANGELOG="## Release $VERSION
-
-### Changes since $PREVIOUS_TAG
-
-\`\`\`\`\`\`
-$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:'- %s (%h)' --no-merges)
-\`\`\`\`\`\`
-
-### Usage
-\`\`\`yaml
-- uses: PipeOpsHQ/pipeops-action@$VERSION
-\`\`\`
-
-Or use the major version tag for automatic updates:
-\`\`\`yaml
-- uses: PipeOpsHQ/pipeops-action@$MAJOR_VERSION
-\`\`\`"
+            COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:'- %s (%h)' --no-merges)
+            {
+              echo "## Release $VERSION"
+              echo ""
+              echo "### Changes since $PREVIOUS_TAG"
+              echo ""
+              echo '```'
+              echo "$COMMITS"
+              echo '```'
+              echo ""
+              echo "### Usage"
+              echo '```yaml'
+              echo "- uses: PipeOpsHQ/pipeops-action@$VERSION"
+              echo '```'
+              echo ""
+              echo "Or use the major version tag for automatic updates:"
+              echo '```yaml'
+              echo "- uses: PipeOpsHQ/pipeops-action@$MAJOR_VERSION"
+              echo '```'
+            } > RELEASE_NOTES.md
           fi
 
-          # Save changelog to file
-          echo "$CHANGELOG" > RELEASE_NOTES.md
           echo "Changelog generated"
 
       - name: Create Release
