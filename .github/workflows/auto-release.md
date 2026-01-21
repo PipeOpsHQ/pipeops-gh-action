@@ -109,7 +109,7 @@ Follow [Semantic Versioning](https://semver.org/) guidelines:
 The release workflow automatically generates changelogs from git commits between tags:
 
 ```
-## 📦 Release v1.1.0
+## Release v1.1.0
 
 ### Changes since v1.0.0
 

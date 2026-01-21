@@ -100,7 +100,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ github.event.inputs.create_release }}" == "true" ]; then
-            echo "✅ Release will be created automatically by the release workflow" >> $GITHUB_STEP_SUMMARY
+            echo "Release will be created automatically by the release workflow" >> $GITHUB_STEP_SUMMARY
           else
-            echo "ℹ️ Tag created. Create release manually or run release workflow." >> $GITHUB_STEP_SUMMARY
+            echo "Tag created. Create release manually or run release workflow." >> $GITHUB_STEP_SUMMARY
           fi

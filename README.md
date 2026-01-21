@@ -4,12 +4,12 @@ A GitHub Action for deploying applications to [PipeOps](https://pipeops.io) plat
 
 ## Features
 
-- 🚀 **Easy Deployment**: Deploy your applications to PipeOps with a single action
-- 🔐 **Secure Authentication**: Token-based authentication using GitHub Secrets
-- 📦 **CLI Integration**: Uses the official PipeOps CLI for reliable deployments
-- 📊 **Structured Outputs**: Provides deployment ID, URL, and status as action outputs
-- 🎯 **Flexible Configuration**: Support for multiple environments, branches, and pipelines
-- 🔄 **JSON Output**: Parses CLI JSON output for structured data extraction
+- **Easy Deployment**: Deploy your applications to PipeOps with a single action
+- **Secure Authentication**: Token-based authentication using GitHub Secrets
+- **CLI Integration**: Uses the official PipeOps CLI for reliable deployments
+- **Structured Outputs**: Provides deployment ID, URL, and status as action outputs
+- **Flexible Configuration**: Support for multiple environments, branches, and pipelines
+- **JSON Output**: Parses CLI JSON output for structured data extraction
 
 ## Usage
 
@@ -288,7 +288,7 @@ jobs:
 
       - name: Notify deployment
         run: |
-          echo "✅ Deployment completed!"
+          echo "Deployment completed!"
           echo "Deployment ID: ${{ steps.deploy.outputs.deployment-id }}"
           echo "URL: ${{ steps.deploy.outputs.deployment-url }}"
 ```
@@ -313,4 +313,3 @@ This project is licensed under the MIT License.
 - [PipeOps CLI](https://github.com/PipeOpsHQ/pipeops-cli)
 - [PipeOps Go SDK](https://github.com/PipeOpsHQ/pipeops-go-sdk)
 - [PipeOps Documentation](https://docs.pipeops.io/)
-# pipeops-gh-action

@@ -6,11 +6,11 @@ This guide walks you through publishing the PipeOps Deploy GitHub Action to the 
 
 Before publishing, ensure you have:
 
-1. ✅ **Public Repository**: The repository must be public
-2. ✅ **action.yml**: Located in the root with proper metadata and branding
-3. ✅ **README.md**: Comprehensive documentation (already created)
-4. ✅ **LICENSE**: License file in the root (MIT License created)
-5. ✅ **Valid action.yml branding**: Icon and color specified (already configured)
+1. **Public Repository**: The repository must be public
+2. **action.yml**: Located in the root with proper metadata and branding
+3. **README.md**: Comprehensive documentation (already created)
+4. **LICENSE**: License file in the root (MIT License created)
+5. **Valid action.yml branding**: Icon and color specified (already configured)
 
 ## Step-by-Step Publishing Process
 
@@ -39,7 +39,7 @@ Fill in the release information:
 
 - **Description**: Add release notes, for example:
   ```markdown
-  ## 🚀 Initial Release
+  ## Initial Release
 
   First release of the PipeOps Deploy GitHub Action.
 
@@ -64,7 +64,7 @@ Fill in the release information:
 1. **Look for the Marketplace banner**: At the top of the release page, you'll see:
    > "Publish this Action to the GitHub Marketplace"
 
-2. **Check the checkbox**: ✅ **Publish this Action to the GitHub Marketplace**
+2. **Check the checkbox**: **Publish this Action to the GitHub Marketplace**
 
 3. **Accept Marketplace Agreement** (first time only):
    - Read the GitHub Marketplace Agreement
@@ -147,13 +147,13 @@ When making updates:
 
 Your action must meet these requirements:
 
-- ✅ **Public repository**
-- ✅ **action.yml** in the root directory
-- ✅ **name** field in action.yml
-- ✅ **description** field in action.yml
-- ✅ **branding** section with `icon` and `color`
-- ✅ **README.md** with usage instructions
-- ✅ **LICENSE** file
+- **Public repository**
+- **action.yml** in the root directory
+- **name** field in action.yml
+- **description** field in action.yml
+- **branding** section with `icon` and `color`
+- **README.md** with usage instructions
+- **LICENSE** file
 
 ## Branding Icons
 
